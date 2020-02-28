@@ -2,27 +2,45 @@ import arcpy
 import re
 import xlrd
 import join_field
+import time
 
 egh_public = r"\\oberon\grp117\DAshney\Scripts\connections\egh_public on gisdb1.rose.portland.local.sde"
 
-# master_address = output_gdb + r"\master_address"
-# master_address = egh_public + r"\ARCMAP_ADMIN.Master_Address_Points_pdx"
 
 
 # Creates an empty feature class based on a template and converts the excel input to a table
 # Returns the table path
-# this could be split into 2 functions
+
 def create_ffe_points_layer(input_excel, excel_sheet, output_gdb):
     output_table = output_gdb + r"\new_ffe"
-
     arcpy.ExcelToTable_conversion(Input_Excel_File= input_excel, Output_Table=output_table, Sheet=excel_sheet)
-
-    #arcpy.AddField_management(output_table, "Filtered_Address", "TEXT", "", "",50)
-    #arcpy.AddField_management(output_table, "Basement", "TEXT", "", "", 10)
     return output_gdb + "/new_ffe"
 
+def create_feature_class_template():
+    sr = arcpy.SpatialReference("NAD 1983 HARN StatePlane Oregon North FIPS 3601 (Intl Feet)")
+    #temp = arcpy.CreateFeatureclass_management(r"C:\temp\ffe_scratch\FFE_working.gdb", "template", "POINT","", "DISABLED", "DISABLED", sr)
 
-# need to be able to add the filtered addresses to the excel table
+    temp = arcpy.CreateFeatureclass_management("in_memory", "template", "POINT","", "DISABLED", "DISABLED", sr)
+    #need to start with having this field named improperly so it does not mess with later joins
+    #arcpy.AddField_management(temp, "SITEADDR", "TEXT", "", "", 75)
+
+    arcpy.AddField_management(temp, "RNO", "TEXT", "", "", 20)
+    #arcpy.AddField_management(temp, "SURVEYFFE", "DOUBLE")
+    arcpy.AddField_management(temp, "NOBSMT", "SHORT")
+    arcpy.AddField_management(temp, "SURVEYDATE", "DATE")
+    arcpy.AddField_management(temp, "NOTES", "TEXT", "", "", 200)
+    arcpy.AddField_management(temp, "AREA_ID", "LONG")
+    arcpy.AddField_management(temp, "AREA_NAME", "TEXT", "", "", 255)
+    arcpy.AddField_management(temp, "ADDATE", "DATE")
+
+    #Create some temporary fields so we can start testing this our with minimal changes
+    arcpy.AddField_management(temp, "Address", "TEXT", "", "", 50)
+    arcpy.AddField_management(temp, "Elevation", "FLOAT")
+    arcpy.AddField_management(temp, "Basement", "TEXT", "", "", 10)
+    arcpy.AddField_management(temp, "GeocodingNotes", "TEXT", "", "", 15)
+
+    return temp
+
 
 def create_point_feature_class_with_template(name, output_gdb_path, template_path):
     sr = arcpy.SpatialReference("NAD 1983 HARN StatePlane Oregon North FIPS 3601 (Intl Feet)")
@@ -51,10 +69,9 @@ def geocode_ffe_points_with_master_address_points(input_table, feature_class_pat
     address_list_2 = [str(r) for r in address_list]
     address_tuple = tuple(address_list_2)
 
-    field_list = ["ADDRESS_FULL", "@SHAPE"]
+    #field_list = ["ADDRESS_FULL", "@SHAPE"]
     query = "COUNTY NOT IN( 'COLUMBIA' , 'MARION' , 'WASHINGTON' ) AND ADDRESS_FULL in %s" % (address_tuple,)
 
-    # arcpy.Delete_management(input_table)
     # Create a layer that has the matching addresses and save it
     arcpy.MakeFeatureLayer_management(master_address, "temp_layer", query)
 
@@ -75,7 +92,7 @@ def geocode_ffe_points_with_master_address_points(input_table, feature_class_pat
 
         del row, cursor
 
-    print 'Found no id match and could not update geometry for IDs: ', notfound
+    #print 'Found no id match and could not update geometry for IDs: ', notfound
 
     return notfound
 
@@ -93,9 +110,9 @@ def geocode_ffe_points_with_taxlots(input_table, feature_class_path):
 
     address_list_2 = [str(r) for r in address_list]
     address_tuple = tuple(address_list_2)
-    field_list = ["SITEADDR", "@SHAPE"]
+
     query = "SITECITY in('PORTLAND') AND SITEADDR in %s" % (address_tuple,)
-    # arcpy.Delete_management(input_table)
+
     # Create a layer that has the matching addresses and save it
     arcpy.MakeFeatureLayer_management(taxlots, "temp_layer_2", query)
     geometries = {key:value for (key,value) in arcpy.da.SearchCursor("temp_layer_2", ["SITEADDR", 'Shape'])}
@@ -114,22 +131,17 @@ def geocode_ffe_points_with_taxlots(input_table, feature_class_path):
 
         del row, cursor
 
-    print 'Found no id match and could not update geometry for IDs: ', notfound
+    #print 'Found no id match and could not update geometry for IDs: ', notfound
     return notfound
 
 def geocode_ffe_points_with_address_locator(not_found_path, feature_class_path):
     address_locator = egh_public + r"\ARCMAP_ADMIN.Streets_Geocoding_pdx_no_zone"
     arcpy.CalculateField_management(not_found_path, "City", "'Portland'", "PYTHON")
-    address_fields_city = "conditioned_address Address; City City"
-
     arcpy.AlterField_management(not_found_path, "Address", "original_address")
     arcpy.AlterField_management(not_found_path, "conditioned_address", "Address")
-
     arcpy.GeocodeAddresses_geocoding(not_found_path, address_locator, "", feature_class_path)
-
     arcpy.AlterField_management(feature_class_path, "Address", "conditioned_address")
     arcpy.AlterField_management(feature_class_path, "original_address", "Address")
-
     add_text_field_to_feature_class(feature_class_path,'GeocodingNotes', 15)
 
     with arcpy.da.UpdateCursor(feature_class_path, ['GeocodingNotes', 'Status']) as cursor:
@@ -145,7 +157,8 @@ def geocode_ffe_points_with_address_locator(not_found_path, feature_class_path):
     if arcpy.TestSchemaLock(feature_class_path):
         arcpy.DeleteField_management(feature_class_path, drop_fields)
     else:
-        print("ArcPy will not unlock the geocoded ffe")
+        pass
+        #print("ArcPy will not unlock the geocoded ffe")
 
 
 def create_table_from_list(not_found_list, output_gdb_path, table_name):
@@ -178,7 +191,7 @@ def remove_address_ranges_from_list_of_addresses(list):
         else:
             new_tuple = (i[0], i[1], i[2])
             new_list.append(new_tuple)
-
+    print(new_list)
     return new_list
 
 def filter_address_with_regex(address):
@@ -210,9 +223,7 @@ def update_field_with_conditioned_address(feature_class, source_field_name, upda
 
 def geocode_address_table_with_x_y_values(input_table, feature_class_path):
     sr = arcpy.SpatialReference("NAD 1983 HARN StatePlane Oregon North FIPS 3601 (Intl Feet)")
-
     temp_layer = arcpy.MakeXYEventLayer_management(input_table,"X_COORD", "Y_COORD", "Temp_XY_Layer", sr)
-
     filtered_layer = filter_x_y_table_for_ffe(temp_layer)
 
     arcpy.CopyFeatures_management(filtered_layer, feature_class_path)
@@ -230,8 +241,8 @@ def find_nearest_taxlot_to_x_y_point(feature_class_path):
 
 def add_nearest_site_address_to_x_y_points(feature_class_path):
     taxlots = egh_public + r"\ARCMAP_ADMIN.taxlots_pdx"
-    #in_table, in_join_field, join_table, out_join_field, join_fields
     join_field.join(feature_class_path, "NEAR_FID", taxlots, "OBJECTID", "SITEADDR")
+
 
 def rename_field(input_table, old_field_name, new_field_name):
     arcpy.AlterField_management(input_table, old_field_name, new_field_name)
@@ -239,8 +250,9 @@ def rename_field(input_table, old_field_name, new_field_name):
 def return_list_of_excel_fields_from_sheet(excel_workbook, excel_sheet):
     wb = xlrd.open_workbook(excel_workbook)
     sheet = wb.sheet_by_name(excel_sheet)
-
+    wb.release_resources()
     field_list = []
+
     for i in range(sheet.ncols):
         field_list.append(sheet.cell_value(0, i))
 
@@ -249,6 +261,7 @@ def return_list_of_excel_fields_from_sheet(excel_workbook, excel_sheet):
 def return_list_of_fields_from_table(input_table):
     field_list = []
     fields = arcpy.ListFields(input_table)
+
     for field in fields:
         field_list.append(field.name)
     return field_list
@@ -256,10 +269,12 @@ def return_list_of_fields_from_table(input_table):
 def delete_all_fields_except_as_specified_and_geometry(input_table, fields_to_keep):
     all_fields = return_list_of_fields_from_table(input_table)
     fields_to_delete = [x for x in all_fields if x not in fields_to_keep]
+
     if arcpy.TestSchemaLock(input_table):
         arcpy.DeleteField_management(input_table, fields_to_delete)
     else:
-        print("ArcPy will not unlock the table")
+        pass
+        #print("ArcPy will not unlock the table")
 
 
 def search_list_of_fields_for_keyword(field_list, keyword):
@@ -281,4 +296,128 @@ def convert_type_code_to_y_or_no(input_table):
             else:
                 pass
             cursor.updateRow(row)
+
+def create_ffe_from_excel_with_addresses(excel_workbook, excel_sheet, output_gdb, feature_class_name):
+
+    output_gdb_in_memory = "in_memory"
+    ffe_taxlots = output_gdb_in_memory + r"/FFE_points_taxlots"
+
+    ffe_template_path = r"C:\temp\ffe_scratch\FFE_working.gdb\ffe_template"
+
+    output_featureclass_path = output_gdb + "/" + feature_class_name
+
+    feature_classes_to_append = []
+
+    # if excel_sheet is None or excel_sheet == "":
+    #     excel_sheet = get_sheet_names(excel_workbook)
+
+    # Create a table from the input ffe excel spread sheet
+    new_table = create_ffe_points_layer(excel_workbook, excel_sheet, output_gdb_in_memory)
+
+    # Create empty feature classes from  template
+    #
+    #
+    #TESTING the use of creating my own template
+    newTemplate = create_feature_class_template()
+    feature_class_name = create_point_feature_class_with_template(feature_class_name, r"C:\temp\ffe_scratch\FFE_working.gdb", newTemplate)
+
+    additional_fc = create_point_feature_class_with_template("FFE_points_taxlots", output_gdb_in_memory, newTemplate)
+
+    #END TEST uncomment the next 2 lines of code
+    #feature_class_name = create_point_feature_class_with_template(feature_class_name, r"C:\temp\ffe_scratch\FFE_working.gdb", ffe_template_path)
+
+    #additional_fc = create_point_feature_class_with_template("FFE_points_taxlots", output_gdb_in_memory, ffe_template_path)
+##
+    # Geocode the ffe points using a first pass from master address points and a second pass from the address locator
+    unmatched_address_list = geocode_ffe_points_with_master_address_points(new_table, feature_class_name)
+
+    if len(unmatched_address_list) > 0:
+
+        unmatched_address_table = create_table_from_list(unmatched_address_list, output_gdb_in_memory, "unmatched_ffe")
+
+        #  ffe points using the taxlot addresses
+
+        unmatched_address_list_2 = geocode_ffe_points_with_taxlots(unmatched_address_table, additional_fc)
+
+        feature_classes_to_append.append(ffe_taxlots)
+        if len(unmatched_address_list_2) > 0:
+            filtered_list = remove_address_ranges_from_list_of_addresses(unmatched_address_list_2)
+            print(filtered_list)
+            unmatched_address_table_2 = create_table_from_list(filtered_list, output_gdb_in_memory, "unmatched_ffe_2")
+
+
+            ###Go over the uncoded points using the adddress locator
+            geo_locater_fc_path = output_gdb_in_memory + "/geocoded_ffe"
+
+            add_text_field_to_feature_class(unmatched_address_table_2, "conditioned_address", 100)
+
+            update_field_with_conditioned_address(unmatched_address_table_2, "Address", "conditioned_address")
+
+            geocode_ffe_points_with_address_locator(unmatched_address_table_2, geo_locater_fc_path)
+
+            feature_classes_to_append.append(geo_locater_fc_path)
+
+        #combine all three geocoded_feature_classes
+    if len(feature_classes_to_append) > 0:
+        append_tables_to_single_featureclass(output_featureclass_path, feature_classes_to_append)
+
+    calculate_fields(output_featureclass_path)
+
+def get_sheet_names(in_excel):
+    """ Returns a list of sheet names for the selected excel file.
+          This function is used in the script tool's Validation
+    """
+    f = open(r"C:\Users\bfreeman\Desktop\test.txt", "a")
+    f.write(" get sheets ")
+    f.close()
+    try:
+        workbook = xlrd.open_workbook(in_excel)
+        f = open(r"C:\Users\bfreeman\Desktop\test.txt", "a")
+        f.write(" try ")
+        f.close()
+        return [sheet.name for sheet in workbook.sheets()]
+    except:
+
+        return ["two", "three"]
+
+def calculate_fields(feature_class_path):
+    bsmt_expression = "def basement(bool):\n   if bool.upper() == 'Y':\n      return 0\n   elif bool.upper() == 'N':\n      return 1\n   else:\n      return -1"
+    arcpy.CalculateField_management(feature_class_path, "NOBSMT", "basement( !Basement!)", "PYTHON_9.3", bsmt_expression)
+    notes_expression = "def basement(bool):\n   if bool.upper() == 'Y':\n      return 'Has Basement = YES'\n   elif bool.upper() == 'N':\n      return 'Has Basement = NO'\n   else:\n      return -1"
+    arcpy.CalculateField_management(feature_class_path, "NOTES", "basement( !Basement!)", "PYTHON_9.3", notes_expression)
+    arcpy.AlterField_management(feature_class_path, "Address", "SITEADDR")
+    arcpy.AlterField_management(feature_class_path, "Elevation", "SURVEYFFE")
+
+
+
+def create_ffe_from_X_Y(input_excel, excel_sheet, output_featureclass_path, output_gdb, feature_class_name):
+    output_featureclass_path = output_gdb + "/" + feature_class_name
+    output_gdb_in_memory = "in_memory"
+    ffe = create_ffe_points_layer(input_excel, excel_sheet, output_gdb_in_memory)
+    arcpy.AddField_management(ffe, "Basement", "TEXT", "", "", 10)
+
+
+    geocode_address_table_with_x_y_values(ffe, output_featureclass_path)
+    find_nearest_taxlot_to_x_y_point(output_featureclass_path)
+
+    add_nearest_site_address_to_x_y_points(output_featureclass_path)
+    rename_field(output_featureclass_path, "SITEADDR", "Address")
+    convert_type_code_to_y_or_no(output_featureclass_path)
+    fields_to_keep = [u'OBJECTID', "Address", 'SHAPE@', u'Shape', 'Elevation', 'Basement']
+    delete_all_fields_except_as_specified_and_geometry(output_featureclass_path, fields_to_keep)
+
+    arcpy.AddField_management(output_featureclass_path, "Basement", "TEXT", "", "", 10)
+    #arcpy.AddField_management(output_featureclass_path, "SITEADDR", "TEXT", "", "", 75)
+
+    arcpy.AddField_management(output_featureclass_path, "RNO", "TEXT", "", "", 20)
+    #arcpy.AddField_management(output_featureclass_path, "SURVEYFFE", "DOUBLE")
+    arcpy.AddField_management(output_featureclass_path, "NOBSMT", "SHORT")
+    arcpy.AddField_management(output_featureclass_path, "SURVEYDATE", "DATE")
+    arcpy.AddField_management(output_featureclass_path, "NOTES", "TEXT", "", "", 200)
+    arcpy.AddField_management(output_featureclass_path, "AREA_ID", "LONG")
+    arcpy.AddField_management(output_featureclass_path, "AREA_NAME", "TEXT", "", "", 255)
+    arcpy.AddField_management(output_featureclass_path, "ADDATE", "DATE")
+
+
+    calculate_fields(output_featureclass_path)
 
