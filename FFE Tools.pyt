@@ -103,34 +103,22 @@ class GeocodeFFE(object):
         #     f.write("derp " + excel_sheet)
         #     f.close()
         try:
-            # f = open(r"C:\Users\bfreeman\Desktop\test.txt", "a")
-            # f.write(" try execute ")
-            # f.close()
             excel_fields_list = layer_creator.return_list_of_excel_fields_from_sheet(input_excel, excel_sheet)
 
             if layer_creator.search_list_of_fields_for_key_words(restricted_fields, excel_fields_list):
-                arcpy.AddMessage("Excel file has restricted field names, remove or rename restricted fields")
-
+                print("Excel file has restricted field names, remove or rename restricted fields")
+            # Excel FIle is based on X/Y coords, no need to geocode
             elif layer_creator.search_list_of_fields_for_key_words(x_y_key_field_list, excel_fields_list):
 
-                ffe = layer_creator.create_ffe_points_layer(input_excel, excel_sheet, output_gdb_in_memory)
-                arcpy.AddField_management(ffe, "Basement", "TEXT", "", "", 10)
-                layer_creator.geocode_address_table_with_x_y_values(ffe, output_featureclass_path)
-                layer_creator.find_nearest_taxlot_to_x_y_point(output_featureclass_path)
-
-                layer_creator.add_nearest_site_address_to_x_y_points(output_featureclass_path)
-                layer_creator.rename_field(output_featureclass_path, "SITEADDR", "Address")
-                layer_creator.convert_type_code_to_y_or_no(output_featureclass_path)
-                fields_to_keep = [u'OBJECTID', "Address", 'SHAPE@', u'Shape', 'Elevation', 'Basement', 'GeocodingNotes']
-                layer_creator.delete_all_fields_except_as_specified_and_geometry(output_featureclass_path,
-                                                                                 fields_to_keep)
+                layer_creator.create_ffe_from_X_Y(input_excel, excel_sheet, output_featureclass_path, output_gdb,
+                                                  feature_class_name)
 
             elif layer_creator.search_list_of_fields_for_key_words(address_key_field_list, excel_fields_list):
                 layer_creator.create_ffe_from_excel_with_addresses(input_excel, excel_sheet, output_gdb,
                                                                    feature_class_name)
             else:
-                arcpy.AddMessage("Excel file is not in correct format, please check that fields have correct names")
+                print("Excel file is not in correct format, please check that fields have correct names")
         except xlrd.XLRDError:
-            arcpy.AddMessage("Excel sheet is not named 'Sheet1'")
+            print("Excel sheet is not named 'Sheet1'")
 
 

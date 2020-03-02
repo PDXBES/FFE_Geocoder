@@ -12,10 +12,6 @@ excel_sheet = "Formatted"
 #input_table = r"C:\temp\ffe_scratch\FFE_working.gdb\FFE_points_main"
 
 def geocode_ffe(input_excel, excel_sheet, output_featureclass_path, output_gdb, feature_class_name):
-    #input_excel = parameters[0].valueAsText
-    #excel_sheet = parameters[1].valueAsText
-    #output_gdb = parameters[2].valueAsText
-    #feature_class_name = parameters[3].valueAsText
 
     output_featureclass_path = output_gdb + "/" + feature_class_name
 
@@ -23,8 +19,6 @@ def geocode_ffe(input_excel, excel_sheet, output_featureclass_path, output_gdb, 
     address_key_field_list = ["Address", "Elevation", "Basement"]
     restricted_fields = ["SITEADDR"]
     output_gdb_in_memory = "in_memory"
-
-
 
     try:
         excel_fields_list = layer_creator.return_list_of_excel_fields_from_sheet(input_excel, excel_sheet)
@@ -45,22 +39,23 @@ def geocode_ffe(input_excel, excel_sheet, output_featureclass_path, output_gdb, 
 
 
 
-#ffe_main = r"C:\temp\ffe_scratch\FFE_working.gdb\FFE_points_main"
-ffe_main = "nonea"
-gdb = r"C:\temp\ffe_scratch\FFE_working.gdb"
-fc_name = r"FFE_test"
 
-geocode_ffe(input_excel, excel_sheet, ffe_main, gdb, fc_name)
-
-#ToDo: stop using a table template and just create a new one
-#ToDo: add NOTES Field and populate in the form of "Has Basement = YES"
-#ToDo: Add NOBSMT field and populate
-#ToDo: add ADDATE field
-#ToDo: Populate Add Date Field with the date of the survey
 #ToDo: keep the original address even though geocoding is attempting to use a modified address
 
-#this may need to be a separate tool
-#ToDo: spatial join with taxlots to copy RNO
-#ToDo: spatial join with emgaats building layer to get AreaName, and Area_ID
+
+
+def phase_2(input_geocoded_feature_class, output_path):
+
+    layer_creator.get_taxlot_and_emgaats_data(input_geocoded_feature_class, output_path)
 
 #ToDo: possible new tool to compare ffe elevations
+
+if __name__ == "__main__":
+
+    ffe_main = "nonea"
+    gdb = r"C:\temp\ffe_scratch\FFE_working.gdb"
+    fc_name = r"Surveyed_E10489_01112020"
+
+   # geocode_ffe(input_excel, excel_sheet, ffe_main, gdb, fc_name)
+
+    phase_2(r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10489_01112020", r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10489_01112020_joined")

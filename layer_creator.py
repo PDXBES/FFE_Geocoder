@@ -387,6 +387,7 @@ def calculate_fields(feature_class_path):
     arcpy.CalculateField_management(feature_class_path, "NOTES", "basement( !Basement!)", "PYTHON_9.3", notes_expression)
     arcpy.AlterField_management(feature_class_path, "Address", "SITEADDR")
     arcpy.AlterField_management(feature_class_path, "Elevation", "SURVEYFFE")
+    arcpy.DeleteField_management(feature_class_path, "Basement")
 
 
 
@@ -419,5 +420,38 @@ def create_ffe_from_X_Y(input_excel, excel_sheet, output_featureclass_path, outp
     arcpy.AddField_management(output_featureclass_path, "ADDATE", "DATE")
 
 
+
     calculate_fields(output_featureclass_path)
 
+
+
+#Phase 2
+def spatial_join_in_memory(target_feature_class, join_feature_class, output_name):
+    in_memory_name = "in_memory/" + output_name
+    return arcpy.SpatialJoin_analysis(target_feature_class, join_feature_class, in_memory_name)
+
+
+def transfer_data_to_fields(joined_feature_class, target_field, transfer_field):
+    expression = "!" + transfer_field + "!"
+    arcpy.CalculateField_management(joined_feature_class, target_field, expression, "PYTHON_9.3")
+
+
+
+def get_taxlot_and_emgaats_data(input_feature_class, output_path):
+
+    taxlot_path = egh_public + r"\EGH_PUBLIC.ARCMAP_ADMIN.taxlots_pdx"
+    emgaats_buildings_path = r"\\besfile1\GRP117\BFreeman\Connections\EMGAATS BESDBPROD1.sde\EMGAATS.GIS.Network\EMGAATS.GIS.Areas"
+
+    fields_to_keep = return_list_of_fields_from_table(input_feature_class)
+
+    joined_taxlots = spatial_join_in_memory(input_feature_class, taxlot_path, "joined_taxlots")
+    transfer_data_to_fields(joined_taxlots, "RNO", "RNO_1")
+
+    joined_buildings = spatial_join_in_memory(joined_taxlots, emgaats_buildings_path, "joined_buildings")
+    transfer_data_to_fields(joined_buildings, "Area_ID", "area_id_1")
+    transfer_data_to_fields(joined_buildings, "Area_NAME", "area_name_1")
+
+
+    delete_all_fields_except_as_specified_and_geometry(joined_buildings, fields_to_keep)
+
+    arcpy.CopyFeatures_management(joined_buildings, output_path)
