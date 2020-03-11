@@ -6,9 +6,9 @@ import xlrd
 
 ### this section is for user defined variables
 #input_excel = r"C:\temp\ffe_scratch\surveys\Surveyed_E08659_TGA0102C.xls"
-input_excel = r"\\besfile1\ASM_Projects\E10489_RichmondGrnSt\Survey\Xls\Surveyed_E10489_01112020.xlsx"
+input_excel = r"\\besfile1\ASM_Projects\E10683_GooseHollow\Research\Survey\Excel\Suveyed_E10683_092019.xlsx"
 #input_excel = r"C:\temp\ffe_scratch\surveys\Surveyed_E08659_TGA0102A.xls"
-excel_sheet = "Formatted"
+excel_sheet = "Sheet1"
 #input_table = r"C:\temp\ffe_scratch\FFE_working.gdb\FFE_points_main"
 
 def geocode_ffe(input_excel, excel_sheet, output_featureclass_path, output_gdb, feature_class_name):
@@ -16,7 +16,7 @@ def geocode_ffe(input_excel, excel_sheet, output_featureclass_path, output_gdb, 
     output_featureclass_path = output_gdb + "/" + feature_class_name
 
     x_y_key_field_list = ["X_COORD", "Y_COORD", "TYPE", "Elevation"]
-    address_key_field_list = ["Address", "Elevation", "Basement"]
+    address_key_field_list = ["Address", "Elevation", "Basement", "Notes"]
     restricted_fields = ["SITEADDR"]
     output_gdb_in_memory = "in_memory"
 
@@ -54,8 +54,8 @@ if __name__ == "__main__":
 
     ffe_main = "nonea"
     gdb = r"C:\temp\ffe_scratch\FFE_working.gdb"
-    fc_name = r"Surveyed_E10489_01112020"
+    fc_name = r"Stet"
 
-   # geocode_ffe(input_excel, excel_sheet, ffe_main, gdb, fc_name)
+    geocode_ffe(input_excel, excel_sheet, ffe_main, gdb, fc_name)
 
-    phase_2(r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10489_01112020", r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10489_01112020_joined")
+    #phase_2(r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10489_01112020", r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10489_01112020_joined")

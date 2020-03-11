@@ -54,7 +54,7 @@ def append_tables_to_single_featureclass(main, additional):
 
 # Takes the table that does not have geometry, and creates a featureclass from it
 def geocode_ffe_points_with_master_address_points(input_table, feature_class_path):
-    input_table_fields = ["Address", "Elevation", "Basement"]
+    input_table_fields = ["Address", "Elevation", "Basement", "Notes"]
     master_address = egh_public + r"\ARCMAP_ADMIN.Master_Address_Points_pdx"
     insert_cursor = arcpy.da.InsertCursor(feature_class_path, input_table_fields)
     address_list =[]
@@ -304,7 +304,7 @@ def create_ffe_from_excel_with_addresses(excel_workbook, excel_sheet, output_gdb
 
     ffe_template_path = r"C:\temp\ffe_scratch\FFE_working.gdb\ffe_template"
 
-    output_featureclass_path = output_gdb + "/" + feature_class_name
+    output_featureclass_path = output_gdb + "\\" + feature_class_name
 
     feature_classes_to_append = []
 
@@ -315,19 +315,13 @@ def create_ffe_from_excel_with_addresses(excel_workbook, excel_sheet, output_gdb
     new_table = create_ffe_points_layer(excel_workbook, excel_sheet, output_gdb_in_memory)
 
     # Create empty feature classes from  template
-    #
-    #
-    #TESTING the use of creating my own template
+
     newTemplate = create_feature_class_template()
-    feature_class_name = create_point_feature_class_with_template(feature_class_name, r"C:\temp\ffe_scratch\FFE_working.gdb", newTemplate)
+    feature_class_name = create_point_feature_class_with_template(feature_class_name, output_gdb, newTemplate)
 
     additional_fc = create_point_feature_class_with_template("FFE_points_taxlots", output_gdb_in_memory, newTemplate)
 
-    #END TEST uncomment the next 2 lines of code
-    #feature_class_name = create_point_feature_class_with_template(feature_class_name, r"C:\temp\ffe_scratch\FFE_working.gdb", ffe_template_path)
 
-    #additional_fc = create_point_feature_class_with_template("FFE_points_taxlots", output_gdb_in_memory, ffe_template_path)
-##
     # Geocode the ffe points using a first pass from master address points and a second pass from the address locator
     unmatched_address_list = geocode_ffe_points_with_master_address_points(new_table, feature_class_name)
 
@@ -383,8 +377,8 @@ def get_sheet_names(in_excel):
 def calculate_fields(feature_class_path):
     bsmt_expression = "def basement(bool):\n   if bool.upper() == 'Y':\n      return 0\n   elif bool.upper() == 'N':\n      return 1\n   else:\n      return -1"
     arcpy.CalculateField_management(feature_class_path, "NOBSMT", "basement( !Basement!)", "PYTHON_9.3", bsmt_expression)
-    notes_expression = "def basement(bool):\n   if bool.upper() == 'Y':\n      return 'Has Basement = YES'\n   elif bool.upper() == 'N':\n      return 'Has Basement = NO'\n   else:\n      return -1"
-    arcpy.CalculateField_management(feature_class_path, "NOTES", "basement( !Basement!)", "PYTHON_9.3", notes_expression)
+    #notes_expression = "def basement(bool):\n   if bool.upper() == 'Y':\n      return 'Has Basement = YES'\n   elif bool.upper() == 'N':\n      return 'Has Basement = NO'\n   else:\n      return -1"
+    #arcpy.CalculateField_management(feature_class_path, "NOTES", "basement( !Basement!)", "PYTHON_9.3", notes_expression)
     arcpy.AlterField_management(feature_class_path, "Address", "SITEADDR")
     arcpy.AlterField_management(feature_class_path, "Elevation", "SURVEYFFE")
     arcpy.DeleteField_management(feature_class_path, "Basement")
@@ -404,7 +398,7 @@ def create_ffe_from_X_Y(input_excel, excel_sheet, output_featureclass_path, outp
     add_nearest_site_address_to_x_y_points(output_featureclass_path)
     rename_field(output_featureclass_path, "SITEADDR", "Address")
     convert_type_code_to_y_or_no(output_featureclass_path)
-    fields_to_keep = [u'OBJECTID', "Address", 'SHAPE@', u'Shape', 'Elevation', 'Basement']
+    fields_to_keep = [u'OBJECTID', "Address", 'SHAPE@', u'Shape', 'Elevation', 'Basement', 'Notes']
     delete_all_fields_except_as_specified_and_geometry(output_featureclass_path, fields_to_keep)
 
     arcpy.AddField_management(output_featureclass_path, "Basement", "TEXT", "", "", 10)
@@ -414,7 +408,7 @@ def create_ffe_from_X_Y(input_excel, excel_sheet, output_featureclass_path, outp
     #arcpy.AddField_management(output_featureclass_path, "SURVEYFFE", "DOUBLE")
     arcpy.AddField_management(output_featureclass_path, "NOBSMT", "SHORT")
     arcpy.AddField_management(output_featureclass_path, "SURVEYDATE", "DATE")
-    arcpy.AddField_management(output_featureclass_path, "NOTES", "TEXT", "", "", 200)
+    #arcpy.AddField_management(output_featureclass_path, "NOTES", "TEXT", "", "", 200)
     arcpy.AddField_management(output_featureclass_path, "AREA_ID", "LONG")
     arcpy.AddField_management(output_featureclass_path, "AREA_NAME", "TEXT", "", "", 255)
     arcpy.AddField_management(output_featureclass_path, "ADDATE", "DATE")

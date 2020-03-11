@@ -78,9 +78,6 @@ class GeocodeFFE(object):
 
     def execute(self, parameters, messages):
 
-        f = open(r"C:\Users\bfreeman\Desktop\test.txt", "a")
-        f.write(" execute ")
-        f.close()
         input_excel = parameters[0].valueAsText
         excel_sheet = parameters[1].valueAsText
         output_gdb = parameters[2].valueAsText
@@ -93,15 +90,7 @@ class GeocodeFFE(object):
         restricted_fields = ["SITEADDR"]
         output_gdb_in_memory = "in_memory"
 
-        twe = layer_creator.get_sheet_names(parameters[0])
-        f = open(r"C:\Users\bfreeman\Desktop\test.txt", "a")
-        f.write("derp " + twe)
-        f.close()
-        # if parameters[1] is None:
-        #     excel_sheet = layer_creator.get_sheet_names(parameters[0])[0]
-        #     f = open(r"C:\Users\bfreeman\Desktop\test.txt", "a")
-        #     f.write("derp " + excel_sheet)
-        #     f.close()
+
         try:
             excel_fields_list = layer_creator.return_list_of_excel_fields_from_sheet(input_excel, excel_sheet)
 
@@ -112,10 +101,12 @@ class GeocodeFFE(object):
 
                 layer_creator.create_ffe_from_X_Y(input_excel, excel_sheet, output_featureclass_path, output_gdb,
                                                   feature_class_name)
+                arcpy.Delete_management("in_memory")
 
             elif layer_creator.search_list_of_fields_for_key_words(address_key_field_list, excel_fields_list):
                 layer_creator.create_ffe_from_excel_with_addresses(input_excel, excel_sheet, output_gdb,
                                                                    feature_class_name)
+                arcpy.Delete_management("in_memory")
             else:
                 print("Excel file is not in correct format, please check that fields have correct names")
         except xlrd.XLRDError:
