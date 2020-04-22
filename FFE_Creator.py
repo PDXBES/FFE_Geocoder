@@ -69,3 +69,5 @@ if __name__ == "__main__":
     #phase_2(r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10683_09202019_init", r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10683_092019_joined")
 
     print(name_splitter(gdb))
+
+    #test to see if vcs works well
