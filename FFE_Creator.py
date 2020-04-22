@@ -46,9 +46,17 @@ def geocode_ffe(input_excel, excel_sheet, output_featureclass_path, output_gdb, 
 
 def phase_2(input_geocoded_feature_class, output_path):
 
-    layer_creator.get_taxlot_and_emgaats_data(input_geocoded_feature_class, output_path)
+    #layer_creator.get_taxlot_and_emgaats_data(input_geocoded_feature_class, output_path)
+    joined_layer = layer_creator.join_spatial_joined_feature_class_with_emgaats_building(output_path)
+    layer_creator.create_diff_layers(joined_layer)
 
 #ToDo: possible new tool to compare ffe elevations
+
+
+def name_splitter(path):
+    index = path.rfind("\\")
+    return path[index + 1:]
+
 
 if __name__ == "__main__":
 
@@ -56,6 +64,8 @@ if __name__ == "__main__":
     gdb = r"C:\temp\ffe_scratch\FFE_working.gdb"
     fc_name = r"Stet"
 
-    geocode_ffe(input_excel, excel_sheet, ffe_main, gdb, fc_name)
+    #geocode_ffe(input_excel, excel_sheet, ffe_main, gdb, fc_name)
 
-    #phase_2(r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10489_01112020", r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10489_01112020_joined")
+    #phase_2(r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10683_09202019_init", r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10683_092019_joined")
+
+    print(name_splitter(gdb))

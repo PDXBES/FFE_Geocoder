@@ -98,7 +98,7 @@ def geocode_ffe_points_with_master_address_points(input_table, feature_class_pat
 
 
 def geocode_ffe_points_with_taxlots(input_table, feature_class_path):
-    input_table_fields = ["Address", "Elevation", "Basement"]
+    input_table_fields = ["Address", "Elevation", "Basement", "Notes"]
     taxlots = egh_public + r"\ARCMAP_ADMIN.taxlots_pdx"
     address_list = []
     insert_cursor = arcpy.da.InsertCursor(feature_class_path, input_table_fields)
@@ -449,3 +449,29 @@ def get_taxlot_and_emgaats_data(input_feature_class, output_path):
     delete_all_fields_except_as_specified_and_geometry(joined_buildings, fields_to_keep)
 
     arcpy.CopyFeatures_management(joined_buildings, output_path)
+
+#Todo: function to
+def name_splitter(path):
+    index = path.rfind("\\")
+    return path[index + 1:]
+
+def create_diff_layers(input_featureclass, output_path, name):
+    expression_diff_1 = '("SURVEYFFE"- "first_floor_elev_ft" ) > 3'
+    expression_diff_2 = '("SURVEYFFE"- "first_floor_elev_ft" ) < -3'
+
+    diff_1 = arcpy.MakeFeatureLayer_management(input_featureclass, "diff_1", expression_diff_1)
+
+    diff_2 = arcpy.MakeFeatureLayer_management(input_featureclass, "diff_2", expression_diff_2)
+
+
+
+    fc_diff_1 = arcpy.CopyFeatures_management(diff_1, r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10683_09202019_diff_1")
+    fc_diff_2 = arcpy.CopyFeatures_management(diff_2, r"C:\temp\ffe_scratch\FFE_working.gdb\Surveyed_E10683_09202019_diff_2")
+
+    add_text_field_to_feature_class(fc_diff_1, "Resurvey", 10)
+    add_text_field_to_feature_class(fc_diff_2, "Resurvey", 10)
+
+def join_spatial_joined_feature_class_with_emgaats_building(input_featureclass):
+    emgaats_buildings_path = r"\\besfile1\GRP117\BFreeman\Connections\EMGAATS BESDBPROD1.sde\EMGAATS.GIS.Network\EMGAATS.GIS.Areas"
+    temp_layer = arcpy.MakeFeatureLayer_management(input_featureclass, "temp_layer")
+    return arcpy.AddJoin_management(temp_layer,"AREA_ID", emgaats_buildings_path, "area_id")
